@@ -15,11 +15,13 @@ npm.cmd run dev -- --host 127.0.0.1 --port 5174 --strictPort
 
 공통 환경변수: `VITE_API_BASE_URL=https://asg-b2.onrender.com`.
 
-- `GET /supabase-data-rable?season=시즌1[&round=HM크루 1회차]`
+- `GET /supabase-data-rable?season=시즌1[&round=HM레이블 1회차]`
 - `GET /top200-rable?season=시즌1`
 - `POST /upload-supabase-rable`: 기존 전체 JSON·서버 100행 배치·저장 후 재조회 계약 유지.
 
-관리자 비밀번호 입력 UI는 없습니다. 시즌·회차·파일·미리보기·업로드 버튼을 바로 이용할 수 있습니다. **그러나 운영 업로드 API는 여전히 Bearer 인증을 요구합니다.** 기존 유효 세션이 없는 새 탭/새로고침에서는 인증 계약이 없어 저장을 진행하지 않고 정확한 오류를 표시합니다. 서버 키를 넣거나 인증을 우회하지 않았으며 백엔드는 변경하지 않았습니다. 비밀번호 없는 실제 저장에는 서버의 안전한 세션/SSO 계약이 추가로 필요합니다.
+관리자 페이지는 로그인·토큰·세션·인증 쿠키 없이 바로 이용합니다. 시즌 → 회차 → 엑셀 → 미리보기 → 업로드 → 결과·재조회 순서입니다. 업로드 요청은 Content-Type: application/json과 기존 `{data,season,round}` 본문만 보내며 Authorization이나 비밀번호는 보내지 않습니다. 관리자 인증 API와 프론트 세션 모듈은 제거했습니다.
+
+신규 회차는 `HM레이블 직급전`, `HM레이블 1회차`~`HM레이블 12회차`입니다. 팀은 C팀, 시즌은 시즌1·2·3을 유지합니다. 서버가 기존 HM크루 회차도 함께 조회하고 응답 round를 HM레이블로 통일합니다. 표준 밖 회차 및 신규 HM크루 저장은 서버에서 거부합니다.
 
 원본 데이터의 음수·0·큰 정수·시각, 전체 JSON 1회 전송, 10MB 제한, 중복 방지, 207/응답 불명 처리와 저장 ID/원본 재조회 검증은 유지합니다. 표의 100행 페이지네이션과 실제 전체 데이터 집계는 분리합니다.
 
@@ -44,4 +46,4 @@ Repository: https://github.com/EdgeRunner107/HMrableData.git
 
 Vite / `npm run build` / `dist`. 환경변수는 `VITE_API_BASE_URL=https://asg-b2.onrender.com`입니다. 서버 비밀키를 VITE 변수에 넣지 않습니다. 기존 SPA rewrite와 Vercel 프로젝트 설정은 유지합니다.
 
-세부 변경·검증·인증 한계는 [최종 보고서](PROJECT_REPORT.md)를 참고하세요. 이전 작업 이력은 Git에 보존되어 있습니다.
+세부 변경·검증·배포 결과는 [최종 보고서](PROJECT_REPORT.md)를 참고하세요. 이전 작업 이력은 Git에 보존되어 있습니다.

@@ -1,7 +1,8 @@
+import { UPLOAD_ROUNDS } from '../newDataConfig';
 // 전부 가상의 개발용 데이터입니다. 기존 운영 데이터는 포함하지 않습니다.
 const TEAM = '__HM_LABEL_PREVIEW__';
 const members = ['테스트 멤버 A', '테스트 멤버 B', '테스트 멤버 C'];
-const rounds = ['HM크루 직급전', 'HM크루 1회차', 'HM크루 2회차', 'HM크루 3회차'];
+const rounds = UPLOAD_ROUNDS.slice(0, 4);
 
 export function makePreviewRows(season) {
   const seasonNumber = Number(season.replace('시즌', ''));

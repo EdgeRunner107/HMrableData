@@ -58,13 +58,13 @@ def server(production=False):
 
 def fixture(season, count=None):
     if count is not None:
-        return [dict(id=i+1, team='C팀', season=season, round='HM크루 1회차', streamer='멤버 A',
+        return [dict(id=i+1, team='C팀', season=season, round='HM레이블 1회차', streamer='멤버 A',
                      nickname=f'후원자 {i}', user_id=f'user-{i}', amount=-100 if i % 5 == 0 else 200,
                      chat='', type='후원', time='2026-11-26 21:00:00') for i in range(count)]
     return [dict(id=f'{season}-{r}-{m}-{i}', team='C팀', season=season, round=r, streamer=f'멤버 {m}',
                  nickname=f'후원자 {i % 7}', user_id=f'user-{i % 7}', amount=-200 if i == 5 else (i % 5 + 1) * 100,
                  chat='응원♡', type='후원', time=f'2026-11-26 {18+i//4:02}:{i*3%60:02}:00')
-            for r in ['HM크루 직급전', 'HM크루 1회차'] for m in ['A', 'B'] for i in range(18)]
+            for r in ['HM레이블 직급전', 'HM레이블 1회차'] for m in ['A', 'B'] for i in range(18)]
 
 
 def check_preservation():
@@ -94,16 +94,17 @@ def main():
         parsed = urlparse(request.url)
         if parsed.hostname in ('localhost', '127.0.0.1'):
             return route.continue_()
-        cors = {'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'content-type,authorization', 'Access-Control-Allow-Methods': 'GET,POST,OPTIONS'}
+        cors = {'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'content-type', 'Access-Control-Allow-Methods': 'GET,POST,OPTIONS'}
         if request.method == 'OPTIONS':
             return route.fulfill(status=204, headers=cors)
-        if parsed.path == '/admin-rable/login' and request.method == 'POST':
-            if request.post_data_json['password'] != 'browser-test-password':
-                return route.fulfill(status=401, json={'success': False, 'error': '관리자 인증정보가 올바르지 않습니다.'}, headers=cors)
-            return route.fulfill(json={'success': True, 'token': 'mock.signed-token', 'expiresAt': int(time.time() * 1000) + 1800000}, headers=cors)
         if parsed.path == '/upload-supabase-rable' and request.method == 'POST':
-            assert request.headers.get('authorization') == 'Bearer mock.signed-token'
+            assert 'authorization' not in request.headers
+            assert 'cookie' not in request.headers
+            assert not page.context.cookies()
+            assert page.evaluate('sessionStorage.length') == 0
             body = request.post_data_json
+            assert set(body) == {'season', 'round', 'data'}
+            assert body['round'].startswith('HM레이블 ')
             mock_posts.append({'season': body['season'], 'round': body['round'], 'count': len(body['data'])})
             inserted = [dict(id=100000 + len(state['saved']) + i, team='C팀', season=body['season'], round=body['round'],
                              user_id=r['아이디'], nickname=r['닉네임'], chat=r['채팅'], streamer=r['스트리머'],
@@ -159,7 +160,7 @@ def main():
             expect(page.locator('.preview-banner')).to_have_count(0)
             for season in (1, 2, 3):
                 page.goto(base + f'/season/{season}')
-                page.get_by_label('회차', exact=True).select_option('HM크루 1회차')
+                page.get_by_label('회차', exact=True).select_option('HM레이블 1회차')
                 page.get_by_label('멤버', exact=True).select_option('멤버 A')
                 expect(page.locator('.selected-banner')).to_contain_text('4,800점')
                 expect(page.locator('.selected-banner')).to_contain_text('5,200점')
@@ -193,7 +194,7 @@ def main():
                 assert page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1')
                 page.screenshot(path=str(ARTIFACTS / f'home-{width}.png'), full_page=True)
                 page.goto(base + '/season/3')
-                page.get_by_label('회차', exact=True).select_option('HM크루 1회차')
+                page.get_by_label('회차', exact=True).select_option('HM레이블 1회차')
                 page.get_by_label('멤버', exact=True).select_option('멤버 A')
             passed('Home, viewer, TOP 200 and graphs at nine widths from 360 to 1920px without overflow')
 
@@ -230,7 +231,7 @@ def main():
 
             state['count'] = 10005
             page.goto(base + '/season/1')
-            page.get_by_label('회차', exact=True).select_option('HM크루 1회차')
+            page.get_by_label('회차', exact=True).select_option('HM레이블 1회차')
             page.get_by_label('멤버', exact=True).select_option('멤버 A')
             expect(page.locator('.detail-table tbody tr')).to_have_count(100)
             expect(page.locator('.detail-table tfoot')).to_contain_text('10005건')
@@ -245,8 +246,9 @@ def main():
             page.goto(base + '/admin')
             expect(page.get_by_label('팀', exact=True)).to_have_count(0)
             expect(page.get_by_label('회차', exact=True).locator('option')).to_have_count(14)
+            assert page.get_by_label('회차', exact=True).locator('option').all_text_contents()[1:] == ['HM레이블 직급전'] + [f'HM레이블 {i}회차' for i in range(1,13)]
             page.get_by_label('시즌', exact=True).select_option('시즌1')
-            page.get_by_label('회차', exact=True).select_option('HM크루 12회차')
+            page.get_by_label('회차', exact=True).select_option('HM레이블 12회차')
             expect(page.locator('.existing-data')).to_contain_text('기존 등록 데이터: 0건')
             # Generate an actual workbook with the same library used by the original app.
             file = ARTIFACTS / 'upload-501.xlsx'
@@ -259,15 +261,9 @@ def main():
             expect(page.locator('.admin-auth')).to_have_count(0)
             expect(page.locator('.admin-preview-table tbody tr').first).to_contain_text('-100')
             expect(page.get_by_role('button', name='501건 업로드', exact=True)).to_be_enabled()
-            before_posts = len(mock_posts)
-            page.get_by_role('button', name='501건 업로드', exact=True).click()
-            expect(page.locator('.admin-status.error')).to_contain_text('서버 인증 세션이 없습니다')
-            expect(page.locator('.parse-summary')).to_contain_text('전송 0건')
-            assert len(mock_posts) == before_posts
-            # Simulate an already valid session in the isolated test only; the product has no login UI or auto-login.
-            page.clock.install()
-            page.evaluate("async () => { const auth = await import('/src/api/adminAuth.js'); await auth.loginAdmin('browser-test-password'); }")
-            expect(page.get_by_role('button', name='501건 업로드', exact=True)).to_be_enabled()
+            assert page.evaluate('localStorage.length') == 0
+            assert page.evaluate('sessionStorage.length') == 0
+            assert not context.cookies()
             page.get_by_role('button', name='501건 업로드', exact=True).click()
             expect(page.locator('.admin-status.success')).to_contain_text('업로드 및 저장 확인 완료 (501건)')
             expect(page.locator('.existing-data')).to_contain_text('기존 등록 데이터: 501건')
@@ -282,25 +278,30 @@ def main():
             page.get_by_label('시즌', exact=True).select_option('시즌2')
             expect(page.locator('.admin-preview-table')).to_have_count(0)
             expect(page.get_by_label('회차', exact=True)).to_have_value('')
-            page.get_by_label('회차', exact=True).select_option('HM크루 12회차')
+            page.get_by_label('회차', exact=True).select_option('HM레이블 12회차')
             page.locator('#excel-upload').set_input_files(str(file))
             state['uploadMode'] = 'partial'
             page.get_by_role('button', name='501건 업로드', exact=True).click()
             expect(page.locator('.admin-status.error')).to_contain_text('저장 성공 401건 / 실패 100건')
             expect(page.locator('.admin-status.success')).to_have_count(0)
-            page.clock.fast_forward(1800001)
             before_posts = len(mock_posts)
             page.get_by_role('button', name='501건 업로드', exact=True).click()
-            expect(page.locator('.admin-status.error')).to_contain_text('서버 인증 세션이 없습니다')
+            expect(page.locator('.admin-status.error')).to_contain_text('이미 전송한 파일')
             assert len(mock_posts) == before_posts
+            state['uploadMode'] = 'success'
+            page.get_by_label('시즌', exact=True).select_option('시즌3')
+            page.get_by_label('회차', exact=True).select_option('HM레이블 직급전')
+            page.locator('#excel-upload').set_input_files(str(file))
+            page.get_by_role('button', name='501건 업로드', exact=True).click()
+            expect(page.locator('.admin-status.success')).to_contain_text('업로드 및 저장 확인 완료 (501건)')
             expect(page.locator('input[type=password]')).to_have_count(0)
             assert not writes
-            passed('Admin: no password UI, honest missing-session failure, valid-session 501-row Mock upload/readback, duplicate/207/expiry and nine widths')
+            passed('Admin: fresh context without credentials, 501-row Mock upload/readback, duplicate/207, rank round and nine widths')
 
         with server(production=True) as base:
             page.goto(base + '/season/1?previewState=ready')
             expect(page.locator('.preview-banner')).to_have_count(0)
-            page.get_by_label('회차', exact=True).select_option('HM크루 1회차')
+            page.get_by_label('회차', exact=True).select_option('HM레이블 1회차')
             page.get_by_label('멤버', exact=True).select_option('멤버 A')
             page.goto(base + '/admin')
             expect(page.get_by_role('heading', name='운영자 페이지')).to_be_visible()

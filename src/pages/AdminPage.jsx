@@ -90,7 +90,7 @@ export default function AdminPage() {
         ? `${scopeLabel} 업로드 및 저장 확인 완료 (${result.verifiedRows}건)`
         : `저장 성공 ${result.insertedRows}건 / 실패 ${result.failedRows}건 / 재조회 확인 ${result.verifiedRows ?? '미확인'}건. 재전송 전에 등록 내역을 확인해주세요.` });
     } catch (error) {
-      setStatus({ type: 'error', message: `${error.message} 자동 재시도하지 않습니다.` });
+      setStatus({ type: 'error', message: error.message });
     } finally { lock.current = false; setUploading(false); }
   };
 

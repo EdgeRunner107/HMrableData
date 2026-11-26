@@ -5,7 +5,7 @@ import { EXCEL_HEADERS, parseExcel, normalizeTime, normalizeAmount } from '../sr
 import { validateDonationResponse } from '../src/api/validation.js';
 import { createUploadWorkflow, validateUploadResult } from '../src/api/uploadWorkflow.js';
 
-const season = '시즌1', round = 'HM크루 12회차';
+const season = '시즌1', round = 'HM레이블 12회차';
 const scope = { season, round, team: 'C팀' };
 function excel(matrix, date1904 = false) {
   const book = XLSX.utils.book_new();
@@ -129,14 +129,14 @@ test('server cannot silently change an original amount or text and still report 
   await assert.rejects(upload({ rows, season, round }), /원본 데이터와 다릅니다/);
 });
 
-test('definitive pre-write auth rejection allows manual retry after login, without automatic POST', async () => {
+test('definitive pre-write validation rejection allows manual retry after correction, without automatic POST', async () => {
   const rows = parseExcel(excel([EXCEL_HEADERS, ...fixture(1)]), scope).rows;
   let calls=0;
   const workflow = createUploadWorkflow({ storage:storage(), post:async()=>{
-    if (++calls === 1) throw Object.assign(new Error('401'), {notStored:true});
+    if (++calls === 1) throw Object.assign(new Error('400'), {notStored:true});
     return {success:true,requestedRows:1,insertedRows:1,failedRows:0,data:serverRows(rows)};
   }, read:async()=>response(serverRows(rows)) });
-  await assert.rejects(workflow({rows,season,round}), /401/);
+  await assert.rejects(workflow({rows,season,round}), /400/);
   assert.equal(calls,1);
   assert.equal((await workflow({rows,season,round})).complete,true);
   assert.equal(calls,2);

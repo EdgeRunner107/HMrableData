@@ -47,7 +47,7 @@ def main():
                 assert url.path in ('/newdata/supabase-datab','/newdata/top200','/supabase-data-rable','/top200-rable'),url.path
                 if label=='label': assert params.get('team','C팀')=='C팀'
                 rows=fixture(params.get('season','시즌1'))
-                if label=='live': rows=[dict(row,team=params.get('team','H팀')) for row in rows]
+                if label=='live': rows=[dict(row,team=params.get('team','H팀'),round=row['round'].replace('HM레이블','HM크루')) for row in rows]
                 if params.get('round'):rows=[row for row in rows if row['round']==params['round']]
                 if 'top200' in url.path:
                     rows=[dict(team=params.get('team','C팀'),season=params['season'],rank=i+1,nickname='비교 후원자♡',
@@ -67,7 +67,7 @@ def main():
                     page.get_by_role('button',name='시즌1',exact=True).click()
                 else:
                     page.get_by_role('navigation',name='시즌 선택').get_by_role('button').first.click()
-                page.get_by_label('회차',exact=True).select_option('HM크루 1회차')
+                page.get_by_label('회차',exact=True).select_option('HM크루 1회차' if label=='live' else 'HM레이블 1회차')
                 page.get_by_label('스트리머' if label=='live' else '멤버',exact=True).select_option('멤버 A')
                 expect(page.locator('.selected-banner')).to_be_visible()
                 page.wait_for_function('document.documentElement.scrollWidth<=innerWidth+1')
