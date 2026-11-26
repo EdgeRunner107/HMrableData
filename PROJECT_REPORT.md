@@ -4,7 +4,7 @@
 
 ## 결과
 
-C팀 전용 TOP 200, 서버 관리자 인증, 인증 후 Excel 업로드, 전체 건수 검증 및 중복 요청 방지, 모바일 개선을 구현했다. 백엔드 `master`는 실제 Push 후 Render 자동 배포 **Live**를 확인했다. 프론트는 `main`에 최종 변경을 Commit·Push하며 원격 반영 결과와 커밋은 최종 답변에 명시한다. 단순 의존성 경고를 이유로 Push를 보류하지 않는다.
+C팀 전용 TOP 200, 서버 관리자 인증, 인증 후 Excel 업로드, 전체 건수 검증 및 중복 요청 방지, 모바일 개선을 구현했다. 백엔드 `master`는 실제 Push 후 Render 자동 배포 **Live**를 확인했다. 프론트 기능 커밋 `9732c8bbcb6cbadb5906bb85adcbe3301da049f9`도 `main`에 실제 Push하고 원격 refs 일치를 확인했다. 이후 Windows 개발 서버의 파일 잠금 방지를 추가했으며 최신 커밋은 최종 답변에 명시한다. 단순 의존성 경고를 이유로 Push를 보류하지 않는다.
 
 실제 운영 서버에서 C팀 시즌1·2·3 조회와 TOP 200 모두 HTTP 200 / 0건, 관리자 로그인·세션 확인 200, 무인증 업로드 401을 확인했다. **운영 DB에 테스트 데이터를 생성·수정·삭제하지 않았다.** 실제 저장 검증은 Mock DB와 실제 라우트에서 수행했다. 인증된 운영 POST로 데이터를 저장하는 시험은 하지 않았다.
 
@@ -91,7 +91,7 @@ Excel 실제 행·빈 행 제외·파싱·유효·전송·저장 성공·실패�
 
 ## 프론트·모바일
 
-변경: `src/newDataConfig.js`, `src/api/adminAuth.js`, `donations.js`, `top200.js`, `uploads.js`, `uploadWorkflow.js`, `src/pages/AdminPage.jsx`, `src/label.css`, `package.json`, 테스트 3개 파일 및 README/보고서. 신규 TOP 200·로그인·업로드는 하나의 VITE_API_BASE_URL을 공유한다.
+변경: `src/newDataConfig.js`, `src/api/adminAuth.js`, `donations.js`, `top200.js`, `uploads.js`, `uploadWorkflow.js`, `src/pages/AdminPage.jsx`, `src/label.css`, `package.json`, 테스트 3개 파일, `vite.config.js` 및 README/보고서. 신규 TOP 200·로그인·업로드는 하나의 VITE_API_BASE_URL을 공유한다.
 
 - 기존 TOP 200 패널에 C팀 API를 연결하고 미지원 안내를 제거했다. 로딩·빈 데이터·오류·다시 시도·뒤로가기를 유지했다.
 - 기존 다크/퍼플·폰트·시즌 카드·표·그래프·관리자 레이아웃을 유지하고 팀 선택은 제공하지 않는다.
@@ -146,12 +146,14 @@ Excel 실제 행·빈 행 제외·파싱·유효·전송·저장 성공·실패�
 - 백엔드 Push: **성공 / master / bf1d7056e5b4bd8d7117f60edc5418370820fc95**. 원격 refs 일치 확인.
 - Render: **자동 배포 성공, Live**. 배포 ID `dep-dc45c3g473hc739519sg`, 대시보드 표시 약 30.7초. 기존 `npm install` / `node index.js` / master 유지.
 - 프론트 원격: https://github.com/EdgeRunner107/HMrableData.git
-- 프론트: `main`의 최종 커밋·Push 결과는 최종 전달 메시지와 원격 refs로 확인한다.
+- 프론트 Push: **성공 / main / 기능 커밋 9732c8bbcb6cbadb5906bb85adcbe3301da049f9**. Windows 감시 설정을 포함한 최신 커밋은 최종 전달 메시지에 기록한다.
 - Vercel: **Vite / npm run build / dist**. 기존 vercel.json SPA rewrite 유지. 로컬 프로덕션 시즌/관리자 직접 접근을 검증했다.
 - Vercel 변수: **VITE_API_BASE_URL=https://asg-b2.onrender.com** 하나. 서버 비밀번호/서명 키를 Vercel에 넣지 않는다.
-- Vercel 프로젝트 생성·도메인·기존 설정 변경은 수행하지 않는다. 현재 로그인한 Vercel 범위에서 HMrableData 프로젝트 검색 결과가 없어 자동 배포 연결은 확인되지 않았다. 프로젝트·도메인은 요청 범위에 따라 만들지 않았으며 Vercel 배포 완료로 보고하지 않는다.
+- Vercel 프로젝트 생성·도메인·기존 설정 변경은 수행하지 않는다. 현재 로그인한 Vercel 범위에서 HMrableData 프로젝트 검색 결과가 없고, Push 후 GitHub 커밋 status context 0개·deployment 0개여서 자동 배포 연결은 확인되지 않았다. 프로젝트·도메인은 요청 범위에 따라 만들지 않았으며 Vercel 배포 완료로 보고하지 않는다.
 - LOCALHOST: **http://127.0.0.1:5174/**, 관리자 **http://127.0.0.1:5174/admin**. 실제 서버 실행 및 브라우저 확인 완료. 가능한 한 실행 상태로 유지한다.
 - 재실행: HM-LABEL에서 `npm.cmd run dev -- --host 127.0.0.1 --port 5174 --strictPort`.
 - 사용자 추가 SQL: **없음**. Render 인증 변수: **추가 저장 완료**. 관리자 비밀번호는 위 Render 환경 화면에서 확인/변경한다.
 
 남은 실질적 한계는 운영 DB 대량 쓰기를 시험하지 않았다는 점, 서버 재시작 간 영구 멱등성 부재, 다중 페이지 조회의 완전한 트랜잭션 스냅샷 부재, 기존 의존성 위험이다. 기존 개인 통계 Number 공식은 그대로여서 안전 정수 범위를 넘는 합계의 정밀도 한계도 유지된다(TOP 200 신규 합계는 BigInt). 이 한계와 정상 동작·검증 결과를 구분한다.
+
+최종 로컬 점검에서 Windows EBUSY로 Vite가 생성된 audit JSON 감시 중 종료되는 문제를 발견했다. `vite.config.js`에서 `tests/artifacts`만 감시 제외해 원인을 해결했다. 운영 동작·API 계약은 바꾸지 않았다. 로컬 서버는 일반 개발 서버 세션으로 다시 실행하고 실제 HTTP·브라우저 접근을 재확인했다.
