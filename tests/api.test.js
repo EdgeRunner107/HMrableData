@@ -14,12 +14,12 @@ function excel(matrix, date1904 = false) {
   return XLSX.write(book, { type: 'buffer', bookType: 'xlsx' });
 }
 const fixture = count => Array.from({ length: count }, (_, i) => [String(i).padStart(6, '0'), '한글♡중복', i % 2 ? '' : '긴 채팅'.repeat(100), '멤버 A', '후원', i % 3 ? '1,234개' : -100, 46296.5]);
-const storage = () => { const map = new Map(); return { getItem: key => map.get(key), setItem: (key, value) => map.set(key, value) }; };
+const storage = () => { const map = new Map(); return { getItem: key => map.get(key), setItem: (key, value) => map.set(key, value), removeItem: key => map.delete(key) }; };
 const response = rows => ({ success: true, count: rows.length, data: rows });
 function serverRows(rows) { return rows.map((row, i) => ({ id: i + 1, ...scope, user_id: row.아이디,
   nickname: row.닉네임, chat: row.채팅, streamer: row.스트리머, type: row.종류, amount: row.개수, time: row.시간 })); }
 
-for (const count of [499, 500, 501, 999, 1000, 1001, 1250, 2500, 2700, 5000, 10000, 10005]) {
+for (const count of [99, 100, 101, 499, 500, 501, 999, 1000, 1001, 1250, 2500, 2700, 5000, 10000, 10005]) {
   test(`${count} rows: full Excel → one POST → stored IDs → full read verification`, async () => {
     const parsed = parseExcel(excel([EXCEL_HEADERS, ...fixture(count)]), scope);
     assert.equal(parsed.validRows, count);
@@ -127,4 +127,17 @@ test('server cannot silently change an original amount or text and still report 
   const upload = createUploadWorkflow({ storage: storage(), post: async () => ({ success: true,
     requestedRows: 1, insertedRows: 1, failedRows: 0, data: changed }), read: async () => response(changed) });
   await assert.rejects(upload({ rows, season, round }), /원본 데이터와 다릅니다/);
+});
+
+test('definitive pre-write auth rejection allows manual retry after login, without automatic POST', async () => {
+  const rows = parseExcel(excel([EXCEL_HEADERS, ...fixture(1)]), scope).rows;
+  let calls=0;
+  const workflow = createUploadWorkflow({ storage:storage(), post:async()=>{
+    if (++calls === 1) throw Object.assign(new Error('401'), {notStored:true});
+    return {success:true,requestedRows:1,insertedRows:1,failedRows:0,data:serverRows(rows)};
+  }, read:async()=>response(serverRows(rows)) });
+  await assert.rejects(workflow({rows,season,round}), /401/);
+  assert.equal(calls,1);
+  assert.equal((await workflow({rows,season,round})).complete,true);
+  assert.equal(calls,2);
 });

@@ -1,7 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, ChevronDown, FileSpreadsheet, Upload, CheckCircle2, AlertCircle } from 'lucide-react';
-import { SEASONS, UPLOAD_ROUNDS as ROUNDS, ADMIN_UPLOAD_ENABLED, ADMIN_UPLOAD_BLOCK_REASON } from '../newDataConfig';
+import { SEASONS, UPLOAD_ROUNDS as ROUNDS } from '../newDataConfig';
+import { PREVIEW_MODE } from '../config/site';
+import { getAdminSession, loginAdmin, logoutAdmin, subscribeAdminSession } from '../api/adminAuth';
 import { parseExcel } from '../api/excel';
 import { fetchDonations } from '../api/donations';
 import { uploadDonations } from '../api/uploads';
@@ -19,10 +21,30 @@ export default function AdminPage() {
   const [previewPage, setPreviewPage] = useState(0);
   const [existing, setExisting] = useState(null);
   const [refresh, setRefresh] = useState(0);
+  const [session, setSession] = useState(getAdminSession);
+  const [password, setPassword] = useState('');
+  const [loggingIn, setLoggingIn] = useState(false);
+  const [authError, setAuthError] = useState('');
+  const [sentRows, setSentRows] = useState(0);
+  const canUpload = !!session && !PREVIEW_MODE;
   const generation = useRef(0);
   const lock = useRef(false);
   const hasScope = SEASONS.includes(selectedSeason) && ROUNDS.includes(selectedRound);
   const scopeLabel = `HM레이블 / ${selectedSeason} / ${selectedRound}`;
+  useEffect(() => subscribeAdminSession(setSession), []);
+  useEffect(() => {
+    if (!session) return;
+    const timer = setTimeout(logoutAdmin, Math.max(0, session.expiresAt - Date.now()));
+    return () => clearTimeout(timer);
+  }, [session]);
+  const handleLogin = async event => {
+    event.preventDefault();
+    if (loggingIn) return;
+    setLoggingIn(true); setAuthError('');
+    try { await loginAdmin(password); }
+    catch (error) { setAuthError(error.message); }
+    finally { setPassword(''); setLoggingIn(false); }
+  };
 
   useEffect(() => () => { generation.current++; }, []);
   useEffect(() => {
@@ -43,6 +65,7 @@ export default function AdminPage() {
     setPreviewData([]);
     setAnalysis(null);
     setUploadResult(null);
+    setSentRows(0);
     setPreviewPage(0);
     setStatus({ type: '', message: '' });
     const input = document.getElementById('excel-upload');
@@ -72,7 +95,7 @@ export default function AdminPage() {
 
   const handleUpload = async () => {
     if (lock.current || parsing || !hasScope || !previewData.length || analysis?.errors.length) return;
-    if (!ADMIN_UPLOAD_ENABLED) { setStatus({ type: 'error', message: ADMIN_UPLOAD_BLOCK_REASON }); return; }
+    if (!canUpload) { setStatus({ type: 'error', message: '관리자 로그인이 필요합니다.' }); return; }
     lock.current = true;
     setUploading(true);
     setUploadResult(null);
@@ -80,6 +103,7 @@ export default function AdminPage() {
     try {
       const result = await uploadDonations({ rows: previewData, season: selectedSeason, round: selectedRound,
         onState: state => {
+          if (state.sentRows != null) setSentRows(state.sentRows);
           if (state.phase === 'verifying') setStatus({ type: 'uploading', message: '서버 저장 응답을 받았습니다. 등록 내역을 다시 확인하고 있습니다.' });
         } });
       setUploadResult(result);
@@ -94,7 +118,7 @@ export default function AdminPage() {
 
   const parseSummary = analysis && <div className="filter-panel parse-summary" role="status">
     <p>엑셀 전체 {analysis.totalRows.toLocaleString()}행 · 빈 행 제외 {analysis.excluded.length}행 · 데이터 {analysis.dataRows.toLocaleString()}건</p>
-    <p>파싱 {analysis.parsedRows.toLocaleString()}건 · 유효 {analysis.validRows.toLocaleString()}건 · 오류 {analysis.errors.length}건 · 전송 {uploadResult?.sentRows ?? 0}건</p>
+    <p>파싱 {analysis.parsedRows.toLocaleString()}건 · 유효 {analysis.validRows.toLocaleString()}건 · 오류 {analysis.errors.length}건 · 전송 {sentRows}건</p>
     {analysis.excluded.length > 0 && <details><summary>제외된 빈 행 확인</summary><p>{analysis.excluded.map(item => `${item.row}행: ${item.reason}`).join(', ')}</p></details>}
     {analysis.errors.length > 0 && <details open><summary>오류 행 확인</summary><ul>{analysis.errors.slice(0, 100).map(item => <li key={item.row}>{item.row}행: {item.message}</li>)}</ul>{analysis.errors.length > 100 && <p>처음 100개 오류를 표시합니다.</p>}</details>}
   </div>;
@@ -134,7 +158,17 @@ export default function AdminPage() {
 
         </header>
 
-        <div className="notice" role="status">{ADMIN_UPLOAD_BLOCK_REASON}</div>
+        <section className="filter-panel admin-auth" aria-label="관리자 인증">
+          <h2>관리자 {session ? '인증 완료' : '로그인'}</h2>
+          {session ? <div className="admin-session"><p>인증 만료: {new Date(session.expiresAt).toLocaleTimeString('ko-KR')}</p>
+            <button type="button" className="secondary-button" disabled={uploading} onClick={logoutAdmin}>로그아웃</button></div>
+            : <form onSubmit={handleLogin}><label htmlFor="admin-password">관리자 비밀번호</label>
+              <input id="admin-password" type="password" value={password} onChange={event => setPassword(event.target.value)} autoComplete="current-password" required maxLength={1024} disabled={loggingIn} />
+              <button className="primary-button" disabled={loggingIn || !password}>{loggingIn ? '인증 중...' : '로그인'}</button>
+              <p className="helper-text">인증은 30분 동안 유지됩니다. 새로고침 후에는 다시 로그인해주세요.</p></form>}
+          {authError && <p className="notice error" role="alert">{authError}</p>}
+          {PREVIEW_MODE && <p className="helper-text">개발 프리뷰에서는 서버 업로드를 하지 않습니다.</p>}
+        </section>
         {/* ================================================
             01. 팀 / 시즌 / 회차 선택
         ================================================ */}
@@ -794,7 +828,7 @@ export default function AdminPage() {
                 type="button"
                 className="primary-button"
                 onClick={handleUpload}
-                disabled={uploading || parsing || !ADMIN_UPLOAD_ENABLED || !!analysis?.errors.length}
+                disabled={uploading || parsing || !canUpload || !!analysis?.errors.length}
               >
 
                 <Upload
@@ -804,7 +838,7 @@ export default function AdminPage() {
                 {
                   uploading
                     ? '업로드 중...'
-                    : ADMIN_UPLOAD_ENABLED ? `${previewData.length}건 업로드` : '관리자 인증 연결 대기'
+                    : canUpload ? `${previewData.length}건 업로드` : '관리자 로그인 필요'
                 }
 
               </button>

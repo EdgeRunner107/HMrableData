@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "node --test tests/api.test.js",
-    "test:browser": "python tests/hm_label_integration.py"
+    "test:browser": "python tests/hm_label_integration.py",
+    "test:mobile": "python tests/mobile_compare.py"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

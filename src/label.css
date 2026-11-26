@@ -140,3 +140,35 @@ a:focus-visible, button:focus-visible, select:focus-visible, input:focus-visible
 .table-pagination { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px; margin: 16px 0; font-size: 14px; }
 .admin-page button:disabled { cursor: not-allowed; opacity: .5; }
 @media (max-width: 430px) { .site-header .header-tag { display: inline-flex; flex: 0 0 auto; } }
+
+.admin-auth { margin-bottom: 22px; }
+.admin-auth h2 { margin: 0 0 14px; font-size: 20px; }
+.admin-auth form { display: grid; gap: 12px; }
+.admin-auth label, .admin-auth .helper-text { font-size: 14px; line-height: 1.6; }
+.admin-auth input { width: 100%; min-height: 48px; padding: 12px; border: 1px solid #303945; border-radius: 12px; background: #0c1118; color: #f5f6fa; font-size: 16px; }
+.admin-session { display: flex; gap: 12px; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+.admin-session p { color: #a7aebb; font-size: 14px; }
+.admin-page .filter-title p, .admin-page .section-title p, .admin-page .helper-text, .admin-status { font-size: 14px; line-height: 1.6; }
+.admin-page .select-box select { min-height: 48px; height: 48px; font-size: 16px; }
+.admin-page .admin-preview-table { font-size: 14px; }
+.table-wrap { -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
+.viewer-page .top200-table { min-width: 440px; table-layout: auto; }
+.top200-table .top200-number { min-width: 110px; font-variant-numeric: tabular-nums; }
+.top200-table .top200-nickname { min-width: 110px; }
+.top200-table tbody tr:nth-child(-n+3) td:first-child { color: #c5b4ff; font-weight: 800; }
+.top200-section .top200-table-wrap { max-height: 65vh; overflow: auto; }
+.top200-table thead { position: sticky; top: 0; z-index: 1; }
+.viewer-page .mini-stats strong, .viewer-page .chart-summary strong, .viewer-page .selected-banner strong {
+  overflow: visible; white-space: normal; text-overflow: clip; overflow-wrap: anywhere; font-variant-numeric: tabular-nums;
+}
+@media (max-width: 430px) {
+  .label-hero { min-height: 250px; padding: 26px 14px; margin-bottom: 24px; }
+  .hero-wordmark { font-size: 44px; margin: 12px 0 16px; }
+  .hero-features { margin-top: 18px; }
+  .season-card { min-height: 108px; padding-top: 18px; padding-bottom: 18px; }
+  .season-card p { margin-bottom: 10px; }
+  .viewer-heading { gap: 10px; }
+  .admin-page .admin-actions { gap: 10px; }
+  .admin-page .primary-button, .admin-page .secondary-button { min-height: 48px; font-size: 14px; }
+  .table-pagination { gap: 8px; }
+}

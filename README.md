@@ -1,68 +1,71 @@
 # HM LABEL · HM레이블
 
-기존 HM 데이터 화면을 유지한 React 18 / Vite 5 프론트엔드입니다. C팀 전용이며 시즌 1·2·3을 바로 선택합니다.
+C팀 전용 React 18 / Vite 5 프론트엔드입니다. 기존 다크/퍼플 UI와 데이터 집계 공식을 유지하며 시즌 1·2·3을 바로 선택합니다.
 
-## 실행 및 검증
+## 실행
 
 ```powershell
-cd C:\Users\user\Desktop\new\HMrable\front\HM-LABEL
 npm.cmd ci
-npm.cmd run dev -- --host 127.0.0.1
-npm.cmd test
-npm.cmd run build
-npm.cmd run test:browser
+npm.cmd run dev -- --host 127.0.0.1 --port 5174 --strictPort
 ```
 
-이번 작업에서 확인 가능한 개발 서버는 **http://127.0.0.1:5174/** 입니다. 5173의 기존 프로세스는 종료하지 않았습니다. 새 실행 시 포트는 Vite 출력으로 확인하세요.
+- 메인: `http://127.0.0.1:5174/`
+- 시즌별 조회: `/season/1`, `/season/2`, `/season/3`
+- 관리자: `/admin`
 
-| 경로 | 화면 |
-| --- | --- |
-| `/` | HM레이블 시즌 선택 |
-| `/season/1`, `/season/2`, `/season/3` | 시즌별 후원 조회·통계 |
-| `/admin` | 시즌·회차 선택, 기존 등록 건수, 엑셀 분석·미리보기 |
-
-## API
-
-기본 서버는 기존 설정 및 실제 GET으로 확인한 `https://asg-b2.onrender.com`입니다. `.env.local` 또는 Vercel의 `VITE_API_BASE_URL`로 일괄 변경할 수 있습니다. Vite 변수는 빌드 시 반영됩니다. 비밀정보를 넣지 마세요.
+실제 운영 API가 기본이며 `.env.local` 또는 Vercel에 다음 변수를 설정할 수 있습니다.
 
 ```dotenv
 VITE_API_BASE_URL=https://asg-b2.onrender.com
-VITE_PREVIEW_MODE=false
 ```
 
+Vite 변수는 빌드 시 적용됩니다. 서버 비밀번호·서명 키는 VITE 변수에 넣지 않습니다.
+
+## 조회·TOP 200
+
 - `GET /supabase-data-rable?season=시즌1[&round=HM크루 1회차]`
-- `POST /upload-supabase-rable` — 계약에 맞는 클라이언트를 준비했으나 관리자 인증 부재로 실제 전송은 잠겨 있습니다.
-- 시즌값: `시즌1`, `시즌2`, `시즌3`. 회차 문자열은 원본 그대로 사용합니다.
-- 조회는 서버가 1,000행씩 모두 읽어 `{ success, count, data }`를 반환합니다. 프론트는 추가 API 페이지네이션을 하지 않습니다.
-- 클라이언트는 건수 일치, ID 중복, 시즌·팀·회차 범위를 검사합니다. 일부 응답으로 전체 통계를 계산하지 않습니다.
-- 후원자 순위와 상세 표는 100행씩 표시하며 합계는 전체 데이터 기준입니다.
-- H/M API와 Supabase 직접 연결, 실패 시 구 API/가상 데이터 대체는 사용하지 않습니다.
-- C팀 전용 시즌 TOP 200 API가 없어 해당 패널에 연결 필요를 안내합니다. 기존 DB VIEW의 미확인 동점·집계 규칙을 추측하지 않습니다.
+- `GET /top200-rable?season=시즌1`
+- 성공 응답: `{ success: true, count, data }`. 빈 데이터도 정상입니다.
 
-## 관리자 업로드의 현재 제한
+백엔드가 시즌 전체 데이터를 확인해 반환합니다. 프론트는 건수·ID·시즌·회차·팀 범위를 검증하고 잘못된 응답을 통계에 사용하지 않습니다. 후원자 표와 상세 내역은 100행씩 표시하지만 통계는 전체 행을 사용합니다. H/M 경로나 Supabase에 직접 접근하지 않고 오류 시 가상 데이터를 대신 표시하지 않습니다.
 
-참조한 원본 관리자에도 로그인·비밀번호·서버 인증 전달 코드가 없습니다. 신규 POST 라우트에도 인증 미들웨어가 없습니다. 따라서 브라우저 비밀번호나 환경변수로 인증을 만들어 우회하지 않고, 화면과 실제 요청 함수 모두에서 업로드를 차단합니다. 인증 지원 전까지 운영 업로드는 완료 상태가 아닙니다.
+TOP 200은 확인된 기존 VIEW와 같은 닉네임 그룹, signed SUM, 합계 내림차순·DB 닉네임 오름차순의 순번을 사용합니다. 모든 회차·직급전이 대상이며 API에서 집계 완료 후 최대 200명을 반환합니다.
 
-관리자 화면에서는 기존 회차 범위(직급전 + 1~12회차), 필수 엑셀 컬럼(아이디·닉네임·채팅·스트리머·종류·개수·시간), 다크 테마와 표·버튼 디자인을 유지합니다. 파일은 브라우저 안에서만 분석하며 서버에 보내지 않습니다. 잘못된 날짜나 정수 금액은 행별 오류로 표시하고 전체 파일 전송을 막습니다. 동일한 후원 내역을 임의로 중복 제거하지 않습니다.
+## 관리자 업로드
 
-`src/api/uploadWorkflow.js`는 의존성을 주입해 Mock 테스트합니다. 전체 JSON을 1회 전달하고 백엔드가 100행씩 저장하는 계약을 사용합니다. 207·건수 불일치·불명확한 응답·타임아웃·재조회 실패를 전체 성공으로 표시하지 않습니다. 전송 지문을 저장해 같은 브라우저의 동일 요청 재전송을 막으며, 서버의 멱등성 보장을 대신하지는 못합니다. 부분 실패나 전송 결과가 불명확한 경우 자동 재시도하지 않습니다. 삭제·교체 API는 구현하지 않았습니다.
+관리자 화면에서 Render의 `HM_RABLE_ADMIN_PASSWORD`로 로그인합니다. 서버가 검증한 30분 유효 토큰을 탭의 메모리에만 보관하므로 새로고침하면 다시 로그인해야 합니다. 로그아웃은 현재 탭의 토큰을 지웁니다. 이미 발급된 서버 토큰은 만료되거나 서명 키가 변경될 때까지 유효합니다.
 
-## 개발 프리뷰 및 테스트
+- `POST /admin-rable/login`: `{ password }`
+- `POST /upload-supabase-rable`: Bearer 인증과 `{ data, season, round }` JSON
 
-실제 API가 기본입니다. 개발 서버에서만 `VITE_PREVIEW_MODE=true`로 가상의 디자인 확인 데이터를 명시적으로 사용할 수 있습니다. 프로덕션에서는 프리뷰 코드가 제외됩니다.
+엑셀은 기존 첫 번째 시트의 아이디·닉네임·채팅·스트리머·종류·개수·시간 컬럼을 사용합니다. 직급전과 1~12회차 선택을 유지합니다. 원본의 음수·0·큰 정수·한국 시각을 보존하고, 오류가 있는 파일은 전체 전송 전에 차단합니다. 파일 전체를 1회 전송하며 서버가 100행씩 저장합니다. 10MB를 초과하면 전송하지 않습니다.
 
-`npm test`: 실제 XLSX 파일 파싱과 Mock 전송·재조회 검증 20개. 499·500·501·999·1,000·1,001·1,250·2,500·2,700·5,000·10,000·10,005건을 검사합니다.
+실제 저장 수와 ID를 확인하고 등록 내역을 재조회한 경우에만 완료로 표시합니다. 207 일부 실패와 응답 불명·재조회 실패를 구분하며 자동 재시도하지 않습니다. SHA-256 지문과 localStorage로 동일 브라우저의 동일 요청을 잠그고 서버도 단일 프로세스에서 중복 결과를 재사용합니다. 서버 재시작·여러 인스턴스를 아우르는 영구 멱등성은 아직 보장하지 않습니다. 삭제·대체 기능은 없습니다.
 
-`npm run test:browser`: Python Playwright와 설치된 Chrome을 사용합니다. 필요한 경우 `python -m pip install -r tests/requirements.txt`로 준비하세요. `HM_LABEL_CHROME`으로 Chrome 실행 파일을 지정할 수 있습니다. 테스트는 전용 로컬 서버를 띄우며 모든 API를 가로채 Mock으로 응답하고 쓰기 요청을 차단합니다. 결과·스크린샷은 Git에서 제외되는 `tests/artifacts/`에 기록합니다. 원본이 옆 폴더에 있으면 집계 코드와 로고 보존도 검사합니다. 이전 `tests/hm_label_browser.py` 실행 경로도 동일한 테스트로 연결합니다.
+## 검증
 
-## Vercel 준비
+```powershell
+npm.cmd test
+npm.cmd run build
+npm.cmd run test:browser
+npm.cmd run test:mobile
+```
 
-- Repository: `https://github.com/EdgeRunner107/HMrableData.git`
-- Framework Preset: **Vite**
-- Build Command: **npm run build**
-- Output Directory: **dist**
-- 환경변수: **VITE_API_BASE_URL=https://asg-b2.onrender.com**
-- 개발 전용 `VITE_PREVIEW_MODE`는 Vercel에 등록할 필요가 없습니다.
-- `vercel.json`은 확장자 없는 SPA 경로를 `index.html`로 보내며 정적 파일·assets는 제외합니다.
+단위/계약 테스트 24개, Chrome 통합 검증 9개 그룹, 원본과 9개 너비의 모바일 비교 18개를 수행합니다. 브라우저 테스트는 Python Playwright와 설치된 Chrome을 사용합니다. 필요하면 `python -m pip install -r tests/requirements.txt`로 준비합니다. Chrome 실행 파일은 `HM_LABEL_CHROME`으로 지정할 수 있습니다.
 
-서버 인증, C팀 TOP 200, 의존성 보안 점검 등 남은 문제는 [검증 보고서](PROJECT_REPORT.md)를 확인하세요. 요청서의 운영 배포 금지 조건에 따라 GitHub Push와 Vercel 배포는 보류합니다. 기존 Vercel 프로젝트·도메인·환경변수는 수정하지 않았습니다.
+운영 DB 저장 테스트를 하지 않고 API를 가로채 Mock으로 검증합니다. `tests/artifacts/`의 결과·스크린샷·audit 결과는 Git에서 제외됩니다. 원본 H/M 소스는 읽기 전용이며 비교할 때 별도 임시 복사본을 실행합니다.
+
+개발 UI 예시가 필요한 경우에만 `VITE_PREVIEW_MODE=true`를 사용합니다. 프로덕션에서는 프리뷰 코드가 제외되고 프리뷰 모드의 서버 업로드도 차단됩니다.
+
+## Vercel
+
+Repository: `https://github.com/EdgeRunner107/HMrableData.git`
+
+- Framework Preset: Vite
+- Build Command: `npm run build`
+- Output Directory: `dist`
+- 환경변수: `VITE_API_BASE_URL=https://asg-b2.onrender.com`
+
+기존 `vercel.json`의 SPA rewrite를 유지합니다. Vercel 프로젝트·도메인은 새로 생성하지 않습니다. 서버 인증용 두 변수는 이미 ASG-B2 Render 환경에 추가했으며 프론트 설정에는 필요하지 않습니다.
+
+전체 구현, 운영 확인 결과와 남은 한계는 [최종 보고서](PROJECT_REPORT.md)를 참고하세요. 이전 작업 이력은 Git의 `3c20a32` 커밋에 보존되어 있습니다.

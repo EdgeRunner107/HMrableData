@@ -18,7 +18,7 @@ function verifyReturnedRows(stored, sent, season, round) {
   }
 }
 
-// 전송 수와 저장 수를 분리합니다. 실제 브라우저 연결은 관리자 인증 지원 전까지 잠겨 있습니다.
+// 전송 수와 서버가 확인한 저장 수를 분리합니다.
 export function validateUploadResult(body, requested) {
   if (!body || ![body.requestedRows, body.insertedRows, body.failedRows].every(n => Number.isSafeInteger(n) && n >= 0) ||
       body.requestedRows !== requested || body.insertedRows + body.failedRows !== requested ||
@@ -55,7 +55,8 @@ export function createUploadWorkflow({ post, read, storage }) {
         verifyReturnedRows(body.data, data, season, round);
       }
       catch (error) {
-        storage.setItem(key, 'unknown');
+        if (error.notStored === true) storage.removeItem(key);
+        else storage.setItem(key, 'unknown');
         throw error;
       }
       storage.setItem(key, body.success ? 'saved' : 'partial');

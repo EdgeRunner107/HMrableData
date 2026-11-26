@@ -17,7 +17,7 @@ from playwright.sync_api import sync_playwright, expect
 ROOT = Path(__file__).resolve().parents[1]
 ARTIFACTS = ROOT / 'tests/artifacts'
 CHROME = os.environ.get('HM_LABEL_CHROME', 'C:/Program Files/Google/Chrome/Application/chrome.exe')
-checks, requests, writes, errors = [], [], [], []
+checks, requests, writes, errors, mock_posts = [], [], [], [], []
 
 
 def passed(name):
@@ -87,17 +87,40 @@ def main():
         sys.stdout.reconfigure(encoding='utf-8')
     ARTIFACTS.mkdir(parents=True, exist_ok=True)
     check_preservation()
-    state = {'mode': 'ready', 'count': None, 'delay': False, 'pending': []}
+    state = {'mode': 'ready', 'count': None, 'delay': False, 'pending': [], 'saved': [], 'uploadMode': 'success'}
 
     def guard(route):
         request = route.request
         parsed = urlparse(request.url)
+        if parsed.hostname in ('localhost', '127.0.0.1'):
+            return route.continue_()
+        cors = {'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'content-type,authorization', 'Access-Control-Allow-Methods': 'GET,POST,OPTIONS'}
+        if request.method == 'OPTIONS':
+            return route.fulfill(status=204, headers=cors)
+        if parsed.path == '/admin-rable/login' and request.method == 'POST':
+            if request.post_data_json['password'] != 'browser-test-password':
+                return route.fulfill(status=401, json={'success': False, 'error': '관리자 인증정보가 올바르지 않습니다.'}, headers=cors)
+            return route.fulfill(json={'success': True, 'token': 'mock.signed-token', 'expiresAt': int(time.time() * 1000) + 1800000}, headers=cors)
+        if parsed.path == '/upload-supabase-rable' and request.method == 'POST':
+            assert request.headers.get('authorization') == 'Bearer mock.signed-token'
+            body = request.post_data_json
+            mock_posts.append({'season': body['season'], 'round': body['round'], 'count': len(body['data'])})
+            inserted = [dict(id=100000 + len(state['saved']) + i, team='C팀', season=body['season'], round=body['round'],
+                             user_id=r['아이디'], nickname=r['닉네임'], chat=r['채팅'], streamer=r['스트리머'],
+                             type=r['종류'], amount=r['개수'], time=r['시간']) for i, r in enumerate(body['data'])]
+            partial = state['uploadMode'] == 'partial'
+            if partial:
+                inserted = inserted[100:]
+            state['saved'].extend(inserted)
+            result = {'success': not partial, 'requestedRows': len(body['data']), 'insertedRows': len(inserted),
+                      'failedRows': len(body['data']) - len(inserted), 'data': inserted}
+            if partial:
+                result['failedBatches'] = [{'batchNumber': 1, 'startIndex': 0, 'endIndex': 99, 'count': 100}]
+            return route.fulfill(status=207 if partial else 200, json=result, headers=cors)
         if request.method not in ('GET', 'HEAD'):
             writes.append(request.url)
             return route.abort()
-        if parsed.hostname in ('localhost', '127.0.0.1'):
-            return route.continue_()
-        assert parsed.path == '/supabase-data-rable', 'Unexpected endpoint ' + request.url
+        assert parsed.path in ('/supabase-data-rable', '/top200-rable'), 'Unexpected endpoint ' + request.url
         params = {key: value[0] for key, value in parse_qs(parsed.query).items()}
         assert set(params) <= {'season', 'round'}
         requests.append(params)
@@ -106,7 +129,15 @@ def main():
             return
         if state['mode'] == 'error':
             return route.fulfill(status=503, json={'success': False, 'error': '테스트 서버 연결 오류'}, headers={'Access-Control-Allow-Origin': '*'})
-        rows = [] if state['mode'] == 'empty' else fixture(params['season'], state['count'])
+        rows = [] if state['mode'] == 'empty' else fixture(params['season'], state['count']) + [row for row in state['saved'] if row['season'] == params['season']]
+        if parsed.path == '/top200-rable':
+            donors = {}
+            for row in rows:
+                donor = donors.setdefault(row['nickname'], dict(team='C팀', season=params['season'], nickname=row['nickname'], total_amount=0, donation_count=0))
+                donor['total_amount'] += row['amount']
+                donor['donation_count'] += 1
+            ranked = sorted(donors.values(), key=lambda row: (-row['total_amount'], row['nickname']))[:200]
+            return route.fulfill(json={'success': True, 'count': len(ranked), 'data': [dict(row, rank=i+1) for i, row in enumerate(ranked)]}, headers=cors)
         if 'round' in params:
             rows = [row for row in rows if row['round'] == params['round']]
         if state['mode'] == 'mixed':
@@ -145,21 +176,26 @@ def main():
             expect(page.locator('.donor-table .empty-table')).to_be_visible()
             search.fill('')
             page.get_by_role('button', name='시즌 후원자 TOP 200 보기', exact=True).click()
-            expect(page.locator('.top200-panel')).to_contain_text('전용 순위 API 연결이 필요')
-            passed('Search and unsupported season TOP 200 notice, without H/M API fallback')
+            expect(page.locator('.top200-table tbody tr')).to_have_count(7)
+            expect(page.locator('.top200-table tbody tr').first).to_contain_text('후원자 2')
+            passed('Search and C-team season TOP 200 with actual signed totals and matching season scope')
 
-            for width in (360, 390, 430, 768, 1440, 1920):
+            for width in (360, 375, 390, 393, 414, 430, 768, 1440, 1920):
                 page.set_viewport_size({'width': width, 'height': 1000})
                 # ResponsiveContainer observes size changes asynchronously.
                 page.wait_for_function('document.documentElement.scrollWidth <= innerWidth + 1', timeout=5000)
                 page.screenshot(path=str(ARTIFACTS / f'viewer-{width}.png'), full_page=True)
+                if page.locator('.top200-open').count():
+                    page.locator('.top200-open').click()
+                expect(page.locator('.top200-table')).to_be_visible()
+                page.locator('.top200-panel').screenshot(path=str(ARTIFACTS / f'top200-{width}.png'))
                 page.goto(base)
                 assert page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1')
                 page.screenshot(path=str(ARTIFACTS / f'home-{width}.png'), full_page=True)
                 page.goto(base + '/season/3')
                 page.get_by_label('회차', exact=True).select_option('HM크루 1회차')
                 page.get_by_label('멤버', exact=True).select_option('멤버 A')
-            passed('Home, viewer and graphs at 360/390/430/768/1440/1920px without page overflow')
+            passed('Home, viewer, TOP 200 and graphs at nine widths from 360 to 1920px without overflow')
 
             state['delay'] = True
             page.get_by_role('navigation', name='시즌 선택').get_by_role('link', name='시즌 1', exact=True).click()
@@ -219,17 +255,40 @@ def main():
             page.locator('#excel-upload').set_input_files(str(file))
             expect(page.locator('.parse-summary')).to_contain_text('파싱 501건 · 유효 501건')
             expect(page.locator('.admin-preview-table tbody tr')).to_have_count(100)
-            expect(page.get_by_role('button', name='관리자 인증 연결 대기', exact=True)).to_be_disabled()
+            expect(page.get_by_role('button', name='관리자 로그인 필요', exact=True)).to_be_disabled()
             expect(page.locator('.admin-preview-table tbody tr').first).to_contain_text('-100')
-            for width in (360, 390, 430, 768, 1440, 1920):
+            page.get_by_label('관리자 비밀번호', exact=True).fill('wrong')
+            page.get_by_role('button', name='로그인', exact=True).click()
+            expect(page.locator('.admin-auth [role=alert]')).to_contain_text('올바르지 않습니다')
+            page.clock.install()
+            page.get_by_label('관리자 비밀번호', exact=True).fill('browser-test-password')
+            page.get_by_role('button', name='로그인', exact=True).click()
+            expect(page.get_by_role('button', name='501건 업로드', exact=True)).to_be_enabled()
+            page.get_by_role('button', name='501건 업로드', exact=True).click()
+            expect(page.locator('.admin-status.success')).to_contain_text('업로드 및 저장 확인 완료 (501건)')
+            expect(page.locator('.existing-data')).to_contain_text('기존 등록 데이터: 501건')
+            before_posts = len(mock_posts)
+            page.get_by_role('button', name='501건 업로드', exact=True).click()
+            expect(page.locator('.admin-status.error')).to_contain_text('이미 전송한 파일')
+            assert len(mock_posts) == before_posts
+            for width in (360, 375, 390, 393, 414, 430, 768, 1440, 1920):
                 page.set_viewport_size({'width': width, 'height': 1000})
                 assert page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1')
                 page.screenshot(path=str(ARTIFACTS / f'admin-{width}.png'), full_page=True)
             page.get_by_label('시즌', exact=True).select_option('시즌2')
             expect(page.locator('.admin-preview-table')).to_have_count(0)
             expect(page.get_by_label('회차', exact=True)).to_have_value('')
+            page.get_by_label('회차', exact=True).select_option('HM크루 12회차')
+            page.locator('#excel-upload').set_input_files(str(file))
+            state['uploadMode'] = 'partial'
+            page.get_by_role('button', name='501건 업로드', exact=True).click()
+            expect(page.locator('.admin-status.error')).to_contain_text('저장 성공 401건 / 실패 100건')
+            expect(page.locator('.admin-status.success')).to_have_count(0)
+            page.clock.fast_forward(1800001)
+            expect(page.get_by_role('heading', name='관리자 로그인', exact=True)).to_be_visible()
+            expect(page.get_by_role('button', name='관리자 로그인 필요', exact=True)).to_be_disabled()
             assert not writes
-            passed('Admin: 13 rounds retained, 501-row Excel parsed, paginated preview, raw negative preserved, upload blocked, season reset, six widths')
+            passed('Admin: login/401, authenticated 501-row upload, readback, duplicate block, 207 partial failure, expiry and nine widths')
 
         with server(production=True) as base:
             page.goto(base + '/season/1?previewState=ready')
@@ -238,14 +297,14 @@ def main():
             page.get_by_label('멤버', exact=True).select_option('멤버 A')
             page.goto(base + '/admin')
             expect(page.get_by_role('heading', name='운영자 페이지')).to_be_visible()
-            expect(page.locator('body')).to_contain_text('관리자 인증 연결이 필요')
+            expect(page.locator('body')).to_contain_text('관리자 비밀번호')
             for asset in (ROOT / 'dist/assets').glob('*.js'):
                 assert '테스트 멤버 A' not in asset.read_text(encoding='utf-8')
             passed('Production preview: direct season/admin paths, mock excluded and live reads enabled')
         browser.close()
     assert not errors, errors
     assert not writes, writes
-    (ARTIFACTS / 'results.json').write_text(json.dumps({'checks': checks, 'apiRequests': requests, 'writes': writes, 'pageErrors': errors}, ensure_ascii=False, indent=2), encoding='utf-8')
+    (ARTIFACTS / 'results.json').write_text(json.dumps({'checks': checks, 'apiRequests': requests, 'mockUploadRequests': mock_posts, 'writes': writes, 'pageErrors': errors}, ensure_ascii=False, indent=2), encoding='utf-8')
     print(json.dumps({'passed': len(checks), 'apiRequests': len(requests), 'writes': len(writes), 'pageErrors': errors}, ensure_ascii=False))
 
 

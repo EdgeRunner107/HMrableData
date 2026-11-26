@@ -13,7 +13,5 @@ if (import.meta.env.PROD && (base.protocol !== 'https:' || ['localhost', '127.0.
 }
 export const DATA_API_URL = `${API_BASE_URL}/supabase-data-rable`;
 export const UPLOAD_API_URL = `${API_BASE_URL}/upload-supabase-rable`;
-
-// 현재 백엔드에는 관리자 인증 미들웨어가 없습니다. 브라우저 비밀번호로 우회하지 않습니다.
-export const ADMIN_UPLOAD_ENABLED = false;
-export const ADMIN_UPLOAD_BLOCK_REASON = '관리자 인증 연결이 필요하여 서버 업로드가 잠겨 있습니다. 엑셀 파일은 이 브라우저에서 확인할 수 있습니다.';
+export const TOP200_API_URL = `${API_BASE_URL}/top200-rable`;
+export const ADMIN_LOGIN_URL = `${API_BASE_URL}/admin-rable/login`;

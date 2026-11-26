@@ -1,7 +1,5 @@
 # 원본 참고 자료
 
-`AdminPage.original.jsx`, `newdata.browser.cjs`, `top200.browser.cjs`는 원본 참고 자료이며 앱의 import 그래프·빌드·테스트에 포함되지 않습니다.
+이 폴더의 관리자 JSX와 H/M 브라우저 테스트는 이전 작업의 참고 자료이며 현재 import·빌드·테스트에 포함하지 않습니다.
 
-신규 관리자 화면은 원본 JSX·CSS를 바탕으로 팀 선택을 제거하고 HM레이블 브랜딩, 엑셀 검증·미리보기·신규 API 계약을 적용했습니다. 실제 서버 업로드는 관리자 인증 부재로 잠겨 있습니다.
-
-현재 자동 검증은 `npm test`, `npm run test:browser`입니다. 원본 실제 파일은 `../HM-NewData-master`에 변경 없이 보존합니다.
+현재 관리자는 로그인 후 Bearer 인증을 통해 C팀 신규 API에 업로드합니다. 단위 테스트는 `npm test`, 통합 테스트는 `npm run test:browser`, 읽기 전용 원본 모바일 비교는 `npm run test:mobile`로 실행합니다. 실제 원본은 `../HM-NewData-master`에 변경 없이 보존합니다.
