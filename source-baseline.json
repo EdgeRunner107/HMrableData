@@ -1,0 +1,70 @@
+﻿[
+    {
+        "Path":  ".env.example",
+        "Hash":  "D9B471DA53C0E41A792187D2A4BD42C08573576A1B56BB7DCDD1ED13AD541200"
+    },
+    {
+        "Path":  ".gitignore",
+        "Hash":  "318759860D0E32415AF0C4B8C3AB046078CBC8A7FEA5D7B92C7F7CD94118C4EA"
+    },
+    {
+        "Path":  "index.html",
+        "Hash":  "C903B2947FD641A763C3D0B8D9C2739275A4D714212114E9D530655E301D4016"
+    },
+    {
+        "Path":  "package-lock.json",
+        "Hash":  "1147B6AC53A536F1698EE188F5AB84F87B67C4184668B1E7CBF5E0ADB3C83225"
+    },
+    {
+        "Path":  "package.json",
+        "Hash":  "72856AC9CAC7CDB44086F0A37FFC53B478E4B20764AC2BA8EDFC659EC2778D13"
+    },
+    {
+        "Path":  "README.md",
+        "Hash":  "041FBB2137168726A38E8CFBD4DC5CFC7490E78B66498FAC913D4AD66C668CCD"
+    },
+    {
+        "Path":  "public\\logo.jpg",
+        "Hash":  "6308AC6B04F91583773A7DA8DA5E39F09F4975837799F07DC3504796C8C794A1"
+    },
+    {
+        "Path":  "src\\App.jsx",
+        "Hash":  "4AF7E8F59E12EEA6B15681B7BFB92AE57870ED372C004F1735CEBC581EB485D5"
+    },
+    {
+        "Path":  "src\\main.jsx",
+        "Hash":  "F86A355B642F2B93A4ADAA9B839859318CA013B3E607FE373E8AFB50BD4DC9E2"
+    },
+    {
+        "Path":  "src\\newDataConfig.js",
+        "Hash":  "734DD52551E813982124F1D0965BAFB8210EE653039716487AF9BDC1BC88234B"
+    },
+    {
+        "Path":  "src\\styles.css",
+        "Hash":  "7CB2C9FD1BF0F2360D2F53A58E672F14CF9581793045EB015D961C6F4FA9E819"
+    },
+    {
+        "Path":  "src\\api\\top200.js",
+        "Hash":  "730F207E1938DB59D1133F863C3674C286C126DD25129BCA1A7820B7D27CC322"
+    },
+    {
+        "Path":  "src\\components\\SeasonTop200.jsx",
+        "Hash":  "193BD4B0581AD04B56D14B0B4C4B1227F159670550A351EBE1D23C81D980D29C"
+    },
+    {
+        "Path":  "src\\pages\\AdminPage.jsx",
+        "Hash":  "27669D581C2CF020DFAA4542010CC1A28F02767B54D5DB7CFD2B353D5056DB61"
+    },
+    {
+        "Path":  "src\\pages\\ViewerPage.jsx",
+        "Hash":  "35FA513DEA6CBF25B66AD118DF4E7B3176069EB9063D69F35CBF8C5C34664246"
+    },
+    {
+        "Path":  "tests\\newdata.browser.cjs",
+        "Hash":  "102C739B691B05F5C0E9F732C7039A78C86CAC080CF08EB55378203639C22864"
+    },
+    {
+        "Path":  "tests\\top200.browser.cjs",
+        "Hash":  "25460AA6AB61297A40E973F69E759A1E24042BCF5E7A7107916C667CCE68A0AC"
+    }
+]
