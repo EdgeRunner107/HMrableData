@@ -76,7 +76,7 @@ def check_preservation():
     after = (ROOT / 'src/pages/ViewerPage.jsx').read_text(encoding='utf-8')
     start = '  const selectedRows ='
     old = before[before.index(start):before.index('  const scopeSelection =')].replace('스트리머', '멤버').strip()
-    new = after[after.index(start):after.index('  return (\n    <div className="viewer-page">')].strip()
+    new = after[after.index(start):after.index('  return (\n    <main className="page">')].strip()
     assert old == new, 'Aggregation formula changed'
     assert (original / 'public/logo.jpg').read_bytes() == (ROOT / 'public/logo.jpg').read_bytes()
     passed('Original aggregation block and logo preserved')
@@ -155,7 +155,7 @@ def main():
         with server() as base:
             page.goto(base)
             expect(page).to_have_title('HM레이블 | HM LABEL')
-            expect(page.get_by_role('navigation', name='시즌 선택').get_by_role('link')).to_have_count(3)
+            expect(page.get_by_role('navigation', name='시즌 선택').get_by_role('button')).to_have_count(3)
             expect(page.locator('.preview-banner')).to_have_count(0)
             for season in (1, 2, 3):
                 page.goto(base + f'/season/{season}')
@@ -169,7 +169,7 @@ def main():
                 expect(page.locator('.recharts-surface').first).to_be_visible()
             passed('Live adapter: all seasons, server round filter, member filter, totals, negative contribution, charts')
 
-            search = page.get_by_placeholder('닉네임 또는 아이디 검색')
+            search = page.get_by_label('후원자 검색', exact=True)
             search.fill('user-3')
             expect(page.locator('.donor-table tbody tr')).to_have_count(1)
             search.fill('없는 후원자')
@@ -198,9 +198,9 @@ def main():
             passed('Home, viewer, TOP 200 and graphs at nine widths from 360 to 1920px without overflow')
 
             state['delay'] = True
-            page.get_by_role('navigation', name='시즌 선택').get_by_role('link', name='시즌 1', exact=True).click()
+            page.get_by_role('navigation', name='시즌 선택').get_by_role('button', name='시즌 1', exact=True).click()
             expect(page.get_by_label('회차', exact=True)).to_be_disabled()
-            page.get_by_role('navigation', name='시즌 선택').get_by_role('link', name='시즌 2', exact=True).click()
+            page.get_by_role('navigation', name='시즌 선택').get_by_role('button', name='시즌 2', exact=True).click()
             expect(page.get_by_label('회차', exact=True)).to_be_enabled()
             for pending in state['pending']:
                 try:
@@ -255,14 +255,18 @@ def main():
             page.locator('#excel-upload').set_input_files(str(file))
             expect(page.locator('.parse-summary')).to_contain_text('파싱 501건 · 유효 501건')
             expect(page.locator('.admin-preview-table tbody tr')).to_have_count(100)
-            expect(page.get_by_role('button', name='관리자 로그인 필요', exact=True)).to_be_disabled()
+            expect(page.locator('input[type=password]')).to_have_count(0)
+            expect(page.locator('.admin-auth')).to_have_count(0)
             expect(page.locator('.admin-preview-table tbody tr').first).to_contain_text('-100')
-            page.get_by_label('관리자 비밀번호', exact=True).fill('wrong')
-            page.get_by_role('button', name='로그인', exact=True).click()
-            expect(page.locator('.admin-auth [role=alert]')).to_contain_text('올바르지 않습니다')
+            expect(page.get_by_role('button', name='501건 업로드', exact=True)).to_be_enabled()
+            before_posts = len(mock_posts)
+            page.get_by_role('button', name='501건 업로드', exact=True).click()
+            expect(page.locator('.admin-status.error')).to_contain_text('서버 인증 세션이 없습니다')
+            expect(page.locator('.parse-summary')).to_contain_text('전송 0건')
+            assert len(mock_posts) == before_posts
+            # Simulate an already valid session in the isolated test only; the product has no login UI or auto-login.
             page.clock.install()
-            page.get_by_label('관리자 비밀번호', exact=True).fill('browser-test-password')
-            page.get_by_role('button', name='로그인', exact=True).click()
+            page.evaluate("async () => { const auth = await import('/src/api/adminAuth.js'); await auth.loginAdmin('browser-test-password'); }")
             expect(page.get_by_role('button', name='501건 업로드', exact=True)).to_be_enabled()
             page.get_by_role('button', name='501건 업로드', exact=True).click()
             expect(page.locator('.admin-status.success')).to_contain_text('업로드 및 저장 확인 완료 (501건)')
@@ -285,10 +289,13 @@ def main():
             expect(page.locator('.admin-status.error')).to_contain_text('저장 성공 401건 / 실패 100건')
             expect(page.locator('.admin-status.success')).to_have_count(0)
             page.clock.fast_forward(1800001)
-            expect(page.get_by_role('heading', name='관리자 로그인', exact=True)).to_be_visible()
-            expect(page.get_by_role('button', name='관리자 로그인 필요', exact=True)).to_be_disabled()
+            before_posts = len(mock_posts)
+            page.get_by_role('button', name='501건 업로드', exact=True).click()
+            expect(page.locator('.admin-status.error')).to_contain_text('서버 인증 세션이 없습니다')
+            assert len(mock_posts) == before_posts
+            expect(page.locator('input[type=password]')).to_have_count(0)
             assert not writes
-            passed('Admin: login/401, authenticated 501-row upload, readback, duplicate block, 207 partial failure, expiry and nine widths')
+            passed('Admin: no password UI, honest missing-session failure, valid-session 501-row Mock upload/readback, duplicate/207/expiry and nine widths')
 
         with server(production=True) as base:
             page.goto(base + '/season/1?previewState=ready')
@@ -297,7 +304,7 @@ def main():
             page.get_by_label('멤버', exact=True).select_option('멤버 A')
             page.goto(base + '/admin')
             expect(page.get_by_role('heading', name='운영자 페이지')).to_be_visible()
-            expect(page.locator('body')).to_contain_text('관리자 비밀번호')
+            expect(page.locator('input[type=password]')).to_have_count(0)
             for asset in (ROOT / 'dist/assets').glob('*.js'):
                 assert '테스트 멤버 A' not in asset.read_text(encoding='utf-8')
             passed('Production preview: direct season/admin paths, mock excluded and live reads enabled')

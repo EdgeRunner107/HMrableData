@@ -6,8 +6,8 @@ import React, {
 
 import { fetchDonations } from '../api/donations';
 import { PREVIEW_MODE, LIVE_API_ENABLED, SCOPE_TEAM } from '../config/site';
-import { SeasonLinks } from '../components/SiteLayout';
-import { DEFAULT_ROUND } from '../newDataConfig';
+import { LabelLogo, SeasonLinks } from '../components/SiteLayout';
+import { DATA_API_URL, DEFAULT_ROUND } from '../newDataConfig';
 import SeasonTop200 from '../components/SeasonTop200';
 import TablePager from '../components/TablePager';
 
@@ -18,6 +18,7 @@ import {
 import {
   ChevronDown,
   RefreshCw,
+  Settings,
   Search,
   Trophy,
   Users,
@@ -1121,20 +1122,25 @@ export default function ViewerPage({ season: selectedSeason }) {
 
 
   return (
-    <div className="viewer-page">
-      <header className="header viewer-heading">
-        <div><Link className="home-link" to="/">메인으로 돌아가기</Link>
-          <p className="eyebrow">HM LABEL · SEASON {selectedSeason.replace('시즌', '')}</p>
-          <h1>{selectedSeason.replace('시즌', '시즌 ')} 데이터 조회</h1>
-          <p className="helper-text">회차와 멤버를 선택하고 후원 기록을 살펴보세요.</p>
-        </div>
-        <button className="refresh" type="button" onClick={loadData}
+    <main className="page">
+      <section className="mobile viewer-page">
+      <header className="header">
+        <div><p className="eyebrow">HM LABEL</p><h1>HM레이블 · 개인 점수 조회</h1></div>
+        <div className="header-actions">
+          <Link className="header-icon" to="/admin" aria-label="운영자 페이지"><Settings size={18} /></Link>
+          <button className="refresh" type="button" onClick={loadData}
           aria-label="새로고침" disabled={loading || !connected}>
-          <RefreshCw size={18} className={loading ? 'spin' : ''} />
-        </button>
+            <RefreshCw size={18} className={loading ? 'spin' : ''} />
+          </button>
+        </div>
       </header>
-      <SeasonLinks />
-      {!connected && <div className="notice scope-notice" role="status">HM레이블 데이터 연결을 준비 중입니다. 연결 후 시즌별 후원 내역을 확인할 수 있습니다.</div>}
+      <LabelLogo subtitle />
+      <section className="filter-panel scope-panel">
+        <Link className="secondary-button back-to-teams" to="/">← 시즌 선택</Link>
+        <h2 className="scope-title">HM레이블</h2>
+        <p className="label">시즌 선택</p>
+        <SeasonLinks />
+      </section>
         {/* =========================================
             ERROR
         ========================================== */}
@@ -1514,7 +1520,7 @@ export default function ViewerPage({ season: selectedSeason }) {
                       )
                   }
                   aria-label="후원자 검색"
-                  placeholder="닉네임 또는 아이디 검색"
+                  placeholder="닉네임 검색"
                 />
               </label>
 
@@ -2011,7 +2017,7 @@ export default function ViewerPage({ season: selectedSeason }) {
                             fill:
                               '#858e9a',
                             fontSize:
-                              14
+                              9
                           }}
                           tickLine={
                             false
@@ -2037,7 +2043,7 @@ export default function ViewerPage({ season: selectedSeason }) {
                             fill:
                               '#858e9a',
                             fontSize:
-                              14
+                              9
                           }}
                           tickLine={
                             false
@@ -2351,7 +2357,8 @@ export default function ViewerPage({ season: selectedSeason }) {
 
         {connected && <SeasonTop200 key={`${selectedTeam}:${selectedSeason}`}
           team={selectedTeam} season={selectedSeason} formatNumber={numberFormat.format} />}
-
-    </div>
+        <footer>{DATA_API_URL}</footer>
+      </section>
+    </main>
   );
 }

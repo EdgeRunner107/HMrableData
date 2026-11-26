@@ -8,12 +8,12 @@ import { PREVIEW_MODE } from '../config/site';
 let workflow;
 export function uploadDonations(options) {
   if (PREVIEW_MODE) return Promise.reject(new Error('개발 프리뷰에서는 서버 업로드를 하지 않습니다.'));
-  if (!getAdminSession()) return Promise.reject(new Error('관리자 로그인이 필요합니다.'));
+  if (!getAdminSession()) return Promise.reject(new Error('업로드용 서버 인증 세션이 없습니다. 인증 연결이 필요합니다.'));
   workflow ||= createUploadWorkflow({
     storage: window.localStorage,
     post: async body => {
       const session = getAdminSession();
-      if (!session) throw Object.assign(new Error('관리자 인증이 만료되었습니다. 다시 로그인해주세요.'), { notStored: true });
+      if (!session) throw Object.assign(new Error('업로드용 서버 인증 세션이 만료되어 전송하지 않았습니다.'), { notStored: true });
       try {
         return (await axios.post(UPLOAD_API_URL, body, {
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.token}` }, timeout: 180000,
